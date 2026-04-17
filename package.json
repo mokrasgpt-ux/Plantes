@@ -1,1 +1,43 @@
-ewogICJuYW1lIjogInBsYW50ZXNhcHAiLAogICJ2ZXJzaW9uIjogIjEuMC4wIiwKICAibWFpbiI6ICJpbmRleC50cyIsCiAgInNjcmlwdHMiOiB7CiAgICAic3RhcnQiOiAiZXhwbyBzdGFydCIsCiAgICAiYW5kcm9pZCI6ICJleHBvIHN0YXJ0IC0tYW5kcm9pZCIsCiAgICAiaW9zIjogImV4cG8gc3RhcnQgLS1pb3MiLAogICAgIndlYiI6ICJleHBvIHN0YXJ0IC0td2ViIgogIH0sCiAgImRlcGVuZGVuY2llcyI6IHsKICAgICJAcmVhY3QtbmF0aXZlLWFzeW5jLXN0b3JhZ2UvYXN5bmMtc3RvcmFnZSI6ICJeMy4wLjIiLAogICAgIkByZWFjdC1uYXRpdmUtY29tbXVuaXR5L2RhdGV0aW1lcGlja2VyIjogIl45LjEuMCIsCiAgICAiQHJlYWN0LW5hdmlnYXRpb24vYm90dG9tLXRhYnMiOiAiXjcuMTUuOSIsCiAgICAiQHJlYWN0LW5hdmlnYXRpb24vbmF0aXZlIjogIl43LjIuMiIsCiAgICAiQHJlYWN0LW5hdmlnYXRpb24vbmF0aXZlLXN0YWNrIjogIl43LjE0LjExIiwKICAgICJkYXRlLWZucyI6ICJeNC4xLjAiLAogICAgImV4cG8iOiAifjU1LjAuMCIsCiAgICAiZXhwby1jYW1lcmEiOiAiXjU1LjAuMTUiLAogICAgImV4cG8tY29uc3RhbnRzIjogIl41NS4wLjE0IiwKICAgICJleHBvLWRldmljZSI6ICJeNTUuMC4xNSIsCiAgICAiZXhwby1maWxlLXN5c3RlbSI6ICJeNTUuMC4xNiIsCiAgICAiZXhwby1pbWFnZS1waWNrZXIiOiAiXjU1LjAuMTgiLAogICAgImV4cG8tbWVkaWEtbGlicmFyeSI6ICJeNTUuMC4xNCIsCiAgICAiZXhwby1ub3RpZmljYXRpb25zIjogIl41NS4wLjE5IiwKICAgICJleHBvLXNxbGl0ZSI6ICJeNTUuMC4xNSIsCiAgICAiZXhwby1zdGF0dXMtYmFyIjogIn4zLjAuOSIsCiAgICAicmVhY3QiOiAiMTkuMS4wIiwKICAgICJyZWFjdC1uYXRpdmUiOiAiMC44MS41IiwKICAgICJyZWFjdC1uYXRpdmUtZ2VzdHVyZS1oYW5kbGVyIjogIl4yLjMxLjEiLAogICAgInJlYWN0LW5hdGl2ZS1wYXBlciI6ICJeNS4xNS4xIiwKICAgICJyZWFjdC1uYXRpdmUtc2FmZS1hcmVhLWNvbnRleHQiOiAiXjUuNy4wIiwKICAgICJyZWFjdC1uYXRpdmUtc2NyZWVucyI6ICJeNC4yNC4wIiwKICAgICJyZWFjdC1uYXRpdmUtdmVjdG9yLWljb25zIjogIl4xMC4zLjAiCiAgfSwKICAiZGV2RGVwZW5kZW5jaWVzIjogewogICAgIkB0eXBlcy9yZWFjdCI6ICJ+MTkuMS4wIiwKICAgICJ0eXBlc2NyaXB0IjogIn41LjkuMiIKICB9LAogICJwcml2YXRlIjogdHJ1ZQp9Cg==
+{
+  "name": "plantesapp",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "setup": "node scripts/generate-assets.js"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.6.0",
+    "@react-navigation/bottom-tabs": "^7.15.9",
+    "@react-navigation/native": "^7.2.2",
+    "@react-navigation/native-stack": "^7.14.11",
+    "date-fns": "^4.1.0",
+    "expo": "~55.0.0",
+    "expo-camera": "^55.0.15",
+    "expo-constants": "^55.0.14",
+    "expo-device": "^55.0.15",
+    "expo-file-system": "^55.0.16",
+    "expo-image-picker": "^55.0.18",
+    "expo-media-library": "^55.0.14",
+    "expo-notifications": "^55.0.19",
+    "expo-sqlite": "^55.0.15",
+    "expo-status-bar": "~55.0.5",
+    "react": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-gesture-handler": "^2.31.1",
+    "react-native-paper": "^5.15.1",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
+    "react-native-vector-icons": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2",
+    "babel-preset-expo": "~13.0.0"
+  },
+  "private": true
+}
