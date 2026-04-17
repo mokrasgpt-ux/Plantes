@@ -6,7 +6,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Plant, PlantSpecies } from '../types';
-import { savePlant, loadPlants, generateId } from '../utils/storage';
+import { savePlant, loadPlants, generateId, loadRooms, addRoom } from '../utils/storage';
 import { scheduleWateringNotification, cancelNotification } from '../utils/notifications';
 import { findSpeciesByKey } from '../data/plantsDatabase';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -15,8 +15,6 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'AddPlant'>;
   route: RouteProp<RootStackParamList, 'AddPlant'>;
 };
-
-const LOCATIONS = ['Salon', 'Chambre', 'Cuisine', 'Salle de bain', 'Balcon', 'Jardin', 'Bureau'];
 
 export default function AddPlantScreen({ navigation, route }: Props) {
   const editingId = route.params?.plantId;
@@ -29,6 +27,13 @@ export default function AddPlantScreen({ navigation, route }: Props) {
   const [notifTime, setNotifTime] = useState(new Date(new Date().setHours(9, 0, 0, 0)));
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [rooms, setRooms] = useState<string[]>([]);
+  const [showNewRoom, setShowNewRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+
+  useEffect(() => {
+    loadRooms().then(setRooms);
+  }, []);
 
   useEffect(() => {
     if (editingId) {
@@ -60,6 +65,15 @@ export default function AddPlantScreen({ navigation, route }: Props) {
     });
   }
 
+  async function handleAddRoom() {
+    if (!newRoomName.trim()) return;
+    const updated = await addRoom(newRoomName.trim());
+    setRooms(updated);
+    setLocation(newRoomName.trim());
+    setNewRoomName('');
+    setShowNewRoom(false);
+  }
+
   async function handleSave() {
     if (!name.trim()) {
       Alert.alert('Erreur', 'Veuillez donner un nom à votre plante.');
@@ -69,10 +83,12 @@ export default function AddPlantScreen({ navigation, route }: Props) {
       Alert.alert('Erreur', 'Veuillez sélectionner une espèce.');
       return;
     }
+
     setSaving(true);
     try {
       const plants = await loadPlants();
       const existing = editingId ? plants.find(p => p.id === editingId) : null;
+
       const plant: Plant = {
         id: editingId ?? generateId(),
         name: name.trim(),
@@ -88,6 +104,7 @@ export default function AddPlantScreen({ navigation, route }: Props) {
         notificationMinute: notifTime.getMinutes(),
         notificationId: existing?.notificationId,
       };
+
       if (existing?.notificationId && !notifEnabled) {
         await cancelNotification(existing.notificationId);
         plant.notificationId = undefined;
@@ -95,6 +112,7 @@ export default function AddPlantScreen({ navigation, route }: Props) {
         const notifId = await scheduleWateringNotification(plant);
         if (notifId) plant.notificationId = notifId;
       }
+
       await savePlant(plant);
       navigation.goBack();
     } catch (e) {
@@ -107,6 +125,7 @@ export default function AddPlantScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Species */}
         <Text style={styles.sectionTitle}>Espèce *</Text>
         <TouchableOpacity style={styles.speciesButton} onPress={handleSelectSpecies}>
           {selectedSpecies ? (
@@ -122,6 +141,7 @@ export default function AddPlantScreen({ navigation, route }: Props) {
           )}
         </TouchableOpacity>
 
+        {/* Name */}
         <Text style={styles.sectionTitle}>Nom de votre plante *</Text>
         <TextInput
           style={styles.input}
@@ -131,21 +151,53 @@ export default function AddPlantScreen({ navigation, route }: Props) {
           placeholderTextColor="#aaa"
         />
 
-        <Text style={styles.sectionTitle}>Emplacement</Text>
+        {/* Location */}
+        <Text style={styles.sectionTitle}>Pièce</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.locationRow}>
-          {LOCATIONS.map(loc => (
+          {rooms.map(room => (
             <TouchableOpacity
-              key={loc}
-              style={[styles.locationChip, location === loc && styles.locationChipActive]}
-              onPress={() => setLocation(location === loc ? '' : loc)}
+              key={room}
+              style={[styles.locationChip, location === room && styles.locationChipActive]}
+              onPress={() => setLocation(location === room ? '' : room)}
             >
-              <Text style={[styles.locationChipText, location === loc && styles.locationChipTextActive]}>
-                {loc}
+              <Text style={[styles.locationChipText, location === room && styles.locationChipTextActive]}>
+                {room}
               </Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={[styles.locationChip, styles.locationChipAdd]}
+            onPress={() => setShowNewRoom(!showNewRoom)}
+          >
+            <Text style={styles.locationChipAddText}>+ Ajouter</Text>
+          </TouchableOpacity>
         </ScrollView>
 
+        {showNewRoom && (
+          <View style={styles.newRoomRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              value={newRoomName}
+              onChangeText={setNewRoomName}
+              placeholder="Nom de la pièce..."
+              placeholderTextColor="#aaa"
+              autoFocus
+              onSubmitEditing={handleAddRoom}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.newRoomConfirm} onPress={handleAddRoom}>
+              <Text style={styles.newRoomConfirmText}>✓</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {rooms.length === 0 && !showNewRoom && (
+          <Text style={styles.noRoomsHint}>
+            Aucune pièce créée. Appuyez sur "+ Ajouter" pour en créer une.
+          </Text>
+        )}
+
+        {/* Notes */}
         <Text style={styles.sectionTitle}>Notes personnelles</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
@@ -158,28 +210,46 @@ export default function AddPlantScreen({ navigation, route }: Props) {
           textAlignVertical="top"
         />
 
+        {/* Watering frequency */}
         <Text style={styles.sectionTitle}>Fréquence d'arrosage</Text>
         <View style={styles.frequencyRow}>
-          <TouchableOpacity style={styles.frequencyBtn} onPress={() => setWateringDays(Math.max(1, wateringDays - 1))}>
+          <TouchableOpacity
+            style={styles.frequencyBtn}
+            onPress={() => setWateringDays(Math.max(1, wateringDays - 1))}
+          >
             <Text style={styles.frequencyBtnText}>−</Text>
           </TouchableOpacity>
           <View style={styles.frequencyCenter}>
             <Text style={styles.frequencyValue}>{wateringDays}</Text>
             <Text style={styles.frequencyUnit}>jour{wateringDays > 1 ? 's' : ''}</Text>
           </View>
-          <TouchableOpacity style={styles.frequencyBtn} onPress={() => setWateringDays(Math.min(90, wateringDays + 1))}>
+          <TouchableOpacity
+            style={styles.frequencyBtn}
+            onPress={() => setWateringDays(Math.min(90, wateringDays + 1))}
+          >
             <Text style={styles.frequencyBtnText}>+</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Notifications */}
         <View style={styles.notifSection}>
           <View style={styles.notifHeader}>
             <Text style={styles.sectionTitle}>Rappels d'arrosage</Text>
-            <Switch value={notifEnabled} onValueChange={setNotifEnabled} trackColor={{ false: '#ddd', true: '#2d6a4f' }} thumbColor={notifEnabled ? '#fff' : '#f4f3f4'} />
+            <Switch
+              value={notifEnabled}
+              onValueChange={setNotifEnabled}
+              trackColor={{ false: '#ddd', true: '#2d6a4f' }}
+              thumbColor={notifEnabled ? '#fff' : '#f4f3f4'}
+            />
           </View>
           {notifEnabled && (
-            <TouchableOpacity style={styles.timeButton} onPress={() => setShowTimePicker(true)}>
-              <Text style={styles.timeButtonText}>🕐 Rappel à {notifTime.getHours().toString().padStart(2, '0')}:{notifTime.getMinutes().toString().padStart(2, '0')}</Text>
+            <TouchableOpacity
+              style={styles.timeButton}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                🕐 Rappel à {notifTime.getHours().toString().padStart(2, '0')}:{notifTime.getMinutes().toString().padStart(2, '0')}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -197,7 +267,11 @@ export default function AddPlantScreen({ navigation, route }: Props) {
           />
         )}
 
-        <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving}>
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
           <Text style={styles.saveButtonText}>
             {saving ? 'Sauvegarde...' : editingId ? '✓ Mettre à jour' : '✓ Ajouter la plante'}
           </Text>
@@ -210,31 +284,107 @@ export default function AddPlantScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f0' },
   scroll: { padding: 16, paddingBottom: 40 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 18, marginBottom: 8 },
-  speciesButton: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 2, borderColor: '#2d6a4f', borderStyle: 'dashed', padding: 14 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2d6a4f',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  speciesButton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#2d6a4f',
+    borderStyle: 'dashed',
+    padding: 14,
+  },
   speciesSelected: { flexDirection: 'row', alignItems: 'center' },
   speciesEmoji: { fontSize: 32, marginRight: 12 },
   speciesName: { fontSize: 16, fontWeight: '700', color: '#1a472a' },
   speciesScientific: { fontSize: 12, color: '#888', fontStyle: 'italic' },
   speciesPlaceholder: { color: '#2d6a4f', fontSize: 15, textAlign: 'center', paddingVertical: 4 },
-  input: { backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#333', borderWidth: 1, borderColor: '#e0e0e0' },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
   textArea: { minHeight: 80 },
   locationRow: { flexDirection: 'row' },
-  locationChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', marginRight: 8 },
+  locationChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
+  },
   locationChipActive: { backgroundColor: '#2d6a4f', borderColor: '#2d6a4f' },
   locationChipText: { fontSize: 13, color: '#666' },
   locationChipTextActive: { color: '#fff', fontWeight: '600' },
-  frequencyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0', overflow: 'hidden' },
-  frequencyBtn: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e8f5e9' },
+  locationChipAdd: { borderColor: '#2d6a4f', borderStyle: 'dashed' },
+  locationChipAddText: { fontSize: 13, color: '#2d6a4f', fontWeight: '600' },
+  newRoomRow: { flexDirection: 'row', marginTop: 10, gap: 8 },
+  newRoomConfirm: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#2d6a4f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newRoomConfirmText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  noRoomsHint: { fontSize: 12, color: '#aaa', marginTop: 6, fontStyle: 'italic' },
+  frequencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    overflow: 'hidden',
+  },
+  frequencyBtn: {
+    width: 56, height: 56,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#e8f5e9',
+  },
   frequencyBtnText: { fontSize: 24, color: '#2d6a4f', fontWeight: '700' },
   frequencyCenter: { flex: 1, alignItems: 'center' },
   frequencyValue: { fontSize: 28, fontWeight: '800', color: '#1a472a' },
   frequencyUnit: { fontSize: 12, color: '#888' },
-  notifSection: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0', padding: 14, marginTop: 18 },
+  notifSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    padding: 14,
+    marginTop: 18,
+  },
   notifHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeButton: { marginTop: 10, backgroundColor: '#e8f5e9', borderRadius: 10, padding: 12, alignItems: 'center' },
+  timeButton: {
+    marginTop: 10,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
   timeButtonText: { fontSize: 15, color: '#2d6a4f', fontWeight: '600' },
-  saveButton: { marginTop: 28, backgroundColor: '#2d6a4f', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  saveButton: {
+    marginTop: 28,
+    backgroundColor: '#2d6a4f',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
