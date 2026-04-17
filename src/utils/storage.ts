@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Plant } from '../types';
 
 const PLANTS_KEY = '@plants_v1';
+const ROOMS_KEY = '@rooms_v1';
 
 export async function loadPlants(): Promise<Plant[]> {
   try {
@@ -42,4 +43,33 @@ export async function getPlant(plantId: string): Promise<Plant | undefined> {
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+export async function loadRooms(): Promise<string[]> {
+  try {
+    const json = await AsyncStorage.getItem(ROOMS_KEY);
+    return json ? JSON.parse(json) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveRooms(rooms: string[]): Promise<void> {
+  await AsyncStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+}
+
+export async function addRoom(name: string): Promise<string[]> {
+  const rooms = await loadRooms();
+  const trimmed = name.trim();
+  if (!trimmed || rooms.includes(trimmed)) return rooms;
+  const updated = [...rooms, trimmed];
+  await saveRooms(updated);
+  return updated;
+}
+
+export async function deleteRoom(name: string): Promise<string[]> {
+  const rooms = await loadRooms();
+  const updated = rooms.filter(r => r !== name);
+  await saveRooms(updated);
+  return updated;
 }

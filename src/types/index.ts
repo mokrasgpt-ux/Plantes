@@ -1,29 +1,29 @@
 export interface PlantPhoto {
   id: string;
   uri: string;
-  date: string;
+  date: string; // ISO string
   note?: string;
 }
 
 export interface Plant {
   id: string;
-  name: string;
-  species: string;
-  createdAt: string;
+  name: string;         // Custom name given by user
+  species: string;      // Species key from database
+  createdAt: string;    // ISO string
   photos: PlantPhoto[];
   notes?: string;
-  location?: string;
+  location?: string;    // e.g. "Salon", "Balcon"
   wateringFrequencyDays: number;
-  lastWatered?: string;
+  lastWatered?: string; // ISO string
   notificationEnabled: boolean;
-  notificationHour: number;
-  notificationMinute: number;
+  notificationHour: number;   // 0-23
+  notificationMinute: number; // 0-59
   notificationId?: string;
 }
 
 export interface PlantSpecies {
   key: string;
-  name: string;
+  name: string;         // Common name in French
   scientificName: string;
   emoji: string;
   description: string;
@@ -49,4 +49,5 @@ export type RootStackParamList = {
 export type TabParamList = {
   Plants: undefined;
   Watering: undefined;
+  Species: undefined;
 };
