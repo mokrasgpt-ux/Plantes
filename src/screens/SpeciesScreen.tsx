@@ -1,105 +1,94 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, Modal, ScrollView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlantSpecies } from '../types';
 import { PLANTS_DATABASE, searchSpecies } from '../data/plantsDatabase';
 import AppHeader from '../components/AppHeader';
-
-const difficultyColors: Record<string, string> = {
-  Facile: '#2d6a4f',
-  Moyen: '#e9a010',
-  Difficile: '#e63946',
-};
+import { cardShadow, difficultyThemes, palette, screenPadding } from '../theme/tokens';
 
 function DifficultyBadge({ difficulty }: { difficulty: PlantSpecies['difficulty'] }) {
-  const color = difficultyColors[difficulty] ?? '#888';
+  const theme = difficultyThemes[difficulty];
   return (
-    <View style={[styles.badge, { backgroundColor: color + '22', borderColor: color }]}>
-      <Text style={[styles.badgeText, { color }]}>{difficulty}</Text>
+    <View style={[styles.badge, { backgroundColor: theme.surface, borderColor: theme.color }]}>
+      <Text style={[styles.badgeText, { color: theme.color }]}>{difficulty}</Text>
     </View>
   );
 }
 
-function InfoRow({ icon, label, text }: { icon: string; label: string; text: string }) {
+function InfoBlock({
+  title,
+  text,
+  tone,
+}: {
+  title: string;
+  text: string;
+  tone: string;
+}) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoIcon}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoText}>{text}</Text>
-      </View>
+    <View style={[styles.infoBlock, { backgroundColor: tone }]}>
+      <Text style={styles.infoBlockTitle}>{title}</Text>
+      <Text style={styles.infoBlockText}>{text}</Text>
     </View>
   );
 }
 
 function SpeciesDetail({ species, onClose }: { species: PlantSpecies; onClose: () => void }) {
-  const insets = useSafeAreaInsets();
+  const theme = difficultyThemes[species.difficulty];
+
   return (
-    <View style={[styles.detailContainer, { paddingTop: insets.top }]}>
-      <View style={styles.detailHeader}>
-        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>← Retour</Text>
-        </TouchableOpacity>
-        <DifficultyBadge difficulty={species.difficulty} />
-      </View>
+    <View style={styles.detailContainer}>
+      <AppHeader
+        theme="atlas"
+        eyebrow="Atlas vegetal"
+        title={species.name}
+        subtitle={species.scientificName}
+        rightElement={
+          <TouchableOpacity onPress={onClose} style={styles.detailCloseBtn}>
+            <Text style={styles.detailCloseText}>Fermer</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         style={styles.detailScroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
+        contentContainerStyle={styles.detailContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.detailHero}>
+        <View style={[styles.detailHeroCard, { backgroundColor: theme.surface }]}>
           <Text style={styles.detailEmoji}>{species.emoji}</Text>
-          <Text style={styles.detailName}>{species.name}</Text>
-          <Text style={styles.detailScientific}>{species.scientificName}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.description}>{species.description}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Conseils d'entretien</Text>
-          <InfoRow icon="💧" label="Arrosage" text={species.wateringAdvice} />
-          <View style={styles.divider} />
-          <InfoRow icon="☀️" label="Lumière" text={species.lightAdvice} />
-          <View style={styles.divider} />
-          <InfoRow icon="💦" label="Humidité" text={species.humidityAdvice} />
-          <View style={styles.divider} />
-          <InfoRow icon="🌡️" label="Température" text={species.temperatureAdvice} />
-          <View style={styles.divider} />
-          <InfoRow icon="🌿" label="Engrais" text={species.fertilizingAdvice} />
-          <View style={styles.divider} />
-          <InfoRow icon="⚠️" label="Problèmes courants" text={species.commonIssues} />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Infos</Text>
-          <View style={styles.infoChipRow}>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoChipLabel}>Arrosage</Text>
-              <Text style={styles.infoChipValue}>
-                tous les {species.defaultWateringFrequencyDays}j
-              </Text>
-            </View>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoChipLabel}>Difficulté</Text>
-              <Text style={[styles.infoChipValue, { color: difficultyColors[species.difficulty] }]}>
-                {species.difficulty}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.tagsRow}>
-            {species.tags.map(tag => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
+          <View style={styles.detailHeroText}>
+            <DifficultyBadge difficulty={species.difficulty} />
+            <Text style={styles.detailDescription}>{species.description}</Text>
           </View>
         </View>
+
+        <View style={styles.metricsRow}>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricValue}>{species.defaultWateringFrequencyDays}j</Text>
+            <Text style={styles.metricLabel}>Cycle moyen</Text>
+          </View>
+          <View style={styles.metricCard}>
+            <Text style={[styles.metricValue, { color: theme.color }]}>{species.difficulty}</Text>
+            <Text style={styles.metricLabel}>Difficulte</Text>
+          </View>
+        </View>
+
+        <View style={styles.tagsRow}>
+          {species.tags.map(tag => (
+            <View key={tag} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+
+        <InfoBlock title="Arrosage" text={species.wateringAdvice} tone="#fff4e6" />
+        <InfoBlock title="Lumiere" text={species.lightAdvice} tone="#eef7fb" />
+        <InfoBlock title="Humidite" text={species.humidityAdvice} tone="#eef8f4" />
+        <InfoBlock title="Temperature" text={species.temperatureAdvice} tone="#f8eef4" />
+        <InfoBlock title="Engrais" text={species.fertilizingAdvice} tone="#f7f0e8" />
+        <InfoBlock title="Problemes courants" text={species.commonIssues} tone="#fff1ee" />
       </ScrollView>
     </View>
   );
@@ -115,76 +104,117 @@ export default function SpeciesScreen() {
     ? baseResults.filter(s => s.difficulty === filterDifficulty)
     : baseResults;
 
+  const heroStats = useMemo(
+    () => [
+      { label: 'Especes', value: PLANTS_DATABASE.length, tone: '#eef7fb' },
+      { label: 'Resultats', value: results.length, tone: '#fff4e6' },
+    ],
+    [results.length]
+  );
+
   return (
     <View style={styles.container}>
       <AppHeader
-        title="📚 Espèces"
-        subtitle={`${PLANTS_DATABASE.length} espèces répertoriées`}
+        theme="atlas"
+        eyebrow="Reference"
+        title="Atlas vegetal"
+        subtitle={`${PLANTS_DATABASE.length} especes dans la base`}
       />
-
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="🔍  Rechercher une espèce..."
-          placeholderTextColor="#aaa"
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
-
-      <View style={styles.filterRow}>
-        {[null, 'Facile', 'Moyen', 'Difficile'].map(d => (
-          <TouchableOpacity
-            key={String(d)}
-            style={[
-              styles.filterChip,
-              filterDifficulty === d && styles.filterChipActive,
-              d && { borderColor: difficultyColors[d as string] },
-              filterDifficulty === d && d && { backgroundColor: difficultyColors[d as string] },
-            ]}
-            onPress={() => setFilterDifficulty(filterDifficulty === d ? null : d)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                filterDifficulty === d && styles.filterChipTextActive,
-                d && filterDifficulty !== d && { color: difficultyColors[d as string] },
-              ]}
-            >
-              {d ?? 'Toutes'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <Text style={styles.resultCount}>{results.length}</Text>
-      </View>
 
       <FlatList
         data={results}
         keyExtractor={item => item.key}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.item} onPress={() => setSelected(item)} activeOpacity={0.8}>
-            <Text style={styles.itemEmoji}>{item.emoji}</Text>
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemScientific}>{item.scientificName}</Text>
-              <View style={styles.itemMeta}>
-                <DifficultyBadge difficulty={item.difficulty} />
-                <Text style={styles.itemWatering}>
-                  💧 /{item.defaultWateringFrequencyDays}j
-                </Text>
-                {item.tags.slice(0, 2).map(tag => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
+        ListHeaderComponent={
+          <View>
+            <View style={styles.heroStatsRow}>
+              {heroStats.map(stat => (
+                <View key={stat.label} style={[styles.heroStatCard, { backgroundColor: stat.tone }]}>
+                  <Text style={styles.heroStatValue}>{stat.value}</Text>
+                  <Text style={styles.heroStatLabel}>{stat.label}</Text>
+                </View>
+              ))}
             </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+
+            <View style={styles.searchShell}>
+              <Text style={styles.searchTitle}>Trouver une plante</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Nom, type, ambiance..."
+                placeholderTextColor="#98a1aa"
+                value={query}
+                onChangeText={setQuery}
+              />
+            </View>
+
+            <View style={styles.filterRow}>
+              {[null, 'Facile', 'Moyen', 'Difficile'].map(d => {
+                const theme = d ? difficultyThemes[d as keyof typeof difficultyThemes] : null;
+                const active = filterDifficulty === d;
+
+                return (
+                  <TouchableOpacity
+                    key={String(d)}
+                    style={[
+                      styles.filterChip,
+                      active && styles.filterChipActive,
+                      theme && !active && { borderColor: theme.color, backgroundColor: theme.surface },
+                      theme && active && { backgroundColor: theme.color, borderColor: theme.color },
+                    ]}
+                    onPress={() => setFilterDifficulty(filterDifficulty === d ? null : d)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        active && styles.filterChipTextActive,
+                        theme && !active && { color: theme.color },
+                      ]}
+                    >
+                      {d ?? 'Toutes'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const theme = difficultyThemes[item.difficulty];
+          return (
+            <TouchableOpacity style={styles.item} onPress={() => setSelected(item)} activeOpacity={0.9}>
+              <View style={[styles.itemAccent, { backgroundColor: theme.color }]} />
+              <View style={styles.itemBody}>
+                <View style={[styles.itemEmojiWrap, { backgroundColor: theme.surface }]}>
+                  <Text style={styles.itemEmoji}>{item.emoji}</Text>
+                </View>
+                <View style={styles.itemInfo}>
+                  <View style={styles.itemTopRow}>
+                    <View style={styles.itemTextWrap}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemScientific}>{item.scientificName}</Text>
+                    </View>
+                    <DifficultyBadge difficulty={item.difficulty} />
+                  </View>
+
+                  <Text style={styles.itemExcerpt} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+
+                  <View style={styles.itemMeta}>
+                    <Text style={styles.itemWatering}>Cycle {item.defaultWateringFrequencyDays}j</Text>
+                    {item.tags.slice(0, 3).map(tag => (
+                      <View key={tag} style={styles.tag}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
       />
 
       <Modal
@@ -201,122 +231,217 @@ export default function SpeciesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f0' },
-  searchContainer: {
-    padding: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  container: { flex: 1, backgroundColor: palette.background },
+  heroStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: screenPadding,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  heroStatCard: {
+    flex: 1,
+    borderRadius: 22,
+    padding: 16,
+    ...cardShadow,
+  },
+  heroStatValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: palette.ink,
+    marginBottom: 4,
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    color: palette.inkSoft,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  searchShell: {
+    marginHorizontal: screenPadding,
+    marginBottom: 10,
+    backgroundColor: palette.surfaceStrong,
+    borderRadius: 24,
+    padding: 16,
+    ...cardShadow,
+  },
+  searchTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.ink,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   searchInput: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: palette.background,
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     fontSize: 15,
-    color: '#333',
+    color: palette.ink,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   filterRow: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    alignItems: 'center',
-    gap: 6,
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: screenPadding,
+    paddingBottom: 12,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderColor: palette.border,
+    backgroundColor: palette.surfaceStrong,
   },
-  filterChipActive: { backgroundColor: '#2d6a4f', borderColor: '#2d6a4f' },
-  filterChipText: { fontSize: 12, fontWeight: '600', color: '#888' },
-  filterChipTextActive: { color: '#fff' },
-  resultCount: { marginLeft: 'auto', fontSize: 12, color: '#aaa' },
+  filterChipActive: {},
+  filterChipText: { fontSize: 12, fontWeight: '800', color: palette.inkSoft },
+  filterChipTextActive: { color: palette.white },
   item: {
+    marginHorizontal: screenPadding,
+    borderRadius: 24,
+    backgroundColor: palette.surfaceStrong,
+    overflow: 'hidden',
+    ...cardShadow,
+  },
+  itemAccent: { height: 8 },
+  itemBody: {
     flexDirection: 'row',
     padding: 14,
-    backgroundColor: '#fff',
+  },
+  itemEmojiWrap: {
+    width: 74,
+    height: 74,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemEmoji: { fontSize: 34 },
+  itemInfo: { flex: 1 },
+  itemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 8,
+  },
+  itemTextWrap: { flex: 1 },
+  itemName: { fontSize: 18, fontWeight: '800', color: palette.ink, marginBottom: 3 },
+  itemScientific: { fontSize: 12, color: palette.inkSoft, fontStyle: 'italic' },
+  itemExcerpt: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: palette.inkSoft,
+    marginBottom: 10,
+  },
+  itemMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     alignItems: 'center',
   },
-  itemEmoji: { fontSize: 36, marginRight: 14, width: 44, textAlign: 'center' },
-  itemInfo: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: '700', color: '#1a472a' },
-  itemScientific: { fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 5 },
-  itemMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' },
-  itemWatering: { fontSize: 10, color: '#2d6a4f', fontWeight: '600' },
-  chevron: { fontSize: 22, color: '#ccc', marginLeft: 8 },
+  itemWatering: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: palette.night,
+  },
   badge: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  badgeText: { fontSize: 10, fontWeight: '700' },
-  tag: { backgroundColor: '#e8f5e9', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  tagText: { fontSize: 10, color: '#2d6a4f' },
-  separator: { height: 1, backgroundColor: '#f0f0f0', marginLeft: 74 },
-  // Detail modal
-  detailContainer: { flex: 1, backgroundColor: '#f5f5f0' },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#2d6a4f',
+  badgeText: { fontSize: 10, fontWeight: '800' },
+  tag: {
+    backgroundColor: '#f2ebde',
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
-  closeBtn: { paddingVertical: 4, paddingRight: 8 },
-  closeBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  tagText: { fontSize: 10, color: palette.inkSoft, fontWeight: '700' },
+  detailContainer: { flex: 1, backgroundColor: palette.background },
+  detailCloseBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  detailCloseText: { color: palette.white, fontSize: 13, fontWeight: '800' },
   detailScroll: { flex: 1 },
-  detailHero: {
-    alignItems: 'center',
-    paddingVertical: 28,
-    backgroundColor: '#2d6a4f',
+  detailContent: {
+    paddingHorizontal: screenPadding,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
-  detailEmoji: { fontSize: 72, marginBottom: 8 },
-  detailName: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  detailScientific: { fontSize: 14, color: '#a8d5ba', fontStyle: 'italic' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    margin: 12,
-    marginBottom: 0,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+  detailHeroCard: {
+    borderRadius: 28,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 14,
+    ...cardShadow,
   },
-  description: { fontSize: 14, color: '#555', lineHeight: 22 },
-  cardSectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2d6a4f',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  detailEmoji: { fontSize: 62 },
+  detailHeroText: { flex: 1, gap: 10 },
+  detailDescription: {
+    fontSize: 15,
+    lineHeight: 23,
+    color: palette.ink,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 12,
   },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6 },
-  infoIcon: { fontSize: 20, marginRight: 10, width: 28, textAlign: 'center' },
-  infoLabel: { fontSize: 12, fontWeight: '700', color: '#2d6a4f', marginBottom: 2 },
-  infoText: { fontSize: 13, color: '#555', lineHeight: 19 },
-  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 2 },
-  infoChipRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  infoChip: {
+  metricCard: {
     flex: 1,
-    backgroundColor: '#f5f5f0',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
+    backgroundColor: palette.surfaceStrong,
+    borderRadius: 22,
+    padding: 16,
+    ...cardShadow,
   },
-  infoChipLabel: { fontSize: 11, color: '#888', marginBottom: 4 },
-  infoChipValue: { fontSize: 16, fontWeight: '700', color: '#1a472a' },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  metricValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: palette.ink,
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: palette.inkSoft,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 14,
+  },
+  infoBlock: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 12,
+    ...cardShadow,
+  },
+  infoBlockTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: palette.ink,
+    marginBottom: 8,
+  },
+  infoBlockText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: palette.inkSoft,
+  },
 });

@@ -15,6 +15,7 @@ import AddPlantScreen from './src/screens/AddPlantScreen';
 import SelectSpeciesScreen from './src/screens/SelectSpeciesScreen';
 import WateringScreen from './src/screens/WateringScreen';
 import SpeciesScreen from './src/screens/SpeciesScreen';
+import { palette } from './src/theme/tokens';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -24,14 +25,15 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2d6a4f',
-        tabBarInactiveTintColor: '#aaa',
+        tabBarActiveTintColor: palette.terracotta,
+        tabBarInactiveTintColor: '#8e98a3',
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: palette.surfaceStrong,
           borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
-          paddingBottom: 4,
-          height: 60,
+          borderTopColor: palette.border,
+          paddingBottom: 8,
+          paddingTop: 6,
+          height: 68,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -87,10 +89,10 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator
           screenOptions={{
-            headerStyle: { backgroundColor: '#2d6a4f' },
+            headerStyle: { backgroundColor: palette.night },
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: '700', color: '#fff' },
-            contentStyle: { backgroundColor: '#f5f5f0' },
+            contentStyle: { backgroundColor: palette.background },
           }}
         >
           <Stack.Screen

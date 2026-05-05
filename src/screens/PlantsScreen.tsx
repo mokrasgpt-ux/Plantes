@@ -6,10 +6,11 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, Plant } from '../types';
-import { loadPlants, deletePlant, loadRooms, addRoom, deleteRoom } from '../utils/storage';
-import { cancelNotification } from '../utils/notifications';
+import { loadPlants, loadRooms, addRoom, deleteRoom } from '../utils/storage';
+import { getWateringStatus } from '../utils/notifications';
 import PlantCard from '../components/PlantCard';
 import AppHeader from '../components/AppHeader';
+import { cardShadow, palette, screenPadding } from '../theme/tokens';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -33,7 +34,7 @@ export default function PlantsScreen({ navigation }: Props) {
   const sections = useMemo(() => {
     const map = new Map<string, Plant[]>();
     plants.forEach(plant => {
-      const key = plant.location || '📦 Sans pièce';
+      const key = plant.location || 'Sans piece';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(plant);
     });
@@ -45,34 +46,15 @@ export default function PlantsScreen({ navigation }: Props) {
     });
 
     map.forEach((data, key) => {
-      if (key === '📦 Sans pièce') return;
+      if (key === 'Sans piece') return;
       if (!rooms.includes(key)) result.push({ title: key, data });
     });
 
-    const noRoom = map.get('📦 Sans pièce');
-    if (noRoom) result.push({ title: '📦 Sans pièce', data: noRoom });
+    const noRoom = map.get('Sans piece');
+    if (noRoom) result.push({ title: 'Sans piece', data: noRoom });
 
     return result;
   }, [plants, rooms]);
-
-  function handleDelete(plant: Plant) {
-    Alert.alert(
-      'Supprimer la plante',
-      `Supprimer "${plant.name}" et toutes ses photos ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            if (plant.notificationId) await cancelNotification(plant.notificationId);
-            const updated = await deletePlant(plant.id);
-            setPlants(updated);
-          },
-        },
-      ]
-    );
-  }
 
   async function handleAddRoom() {
     if (!newRoomName.trim()) return;
@@ -84,10 +66,10 @@ export default function PlantsScreen({ navigation }: Props) {
   async function handleDeleteRoom(name: string) {
     const used = plants.some(p => p.location === name);
     if (used) {
-      Alert.alert('Pièce utilisée', `Des plantes sont dans "${name}". Déplacez-les d'abord.`);
+      Alert.alert('Piece utilisee', `Des plantes sont dans "${name}". Deplacez-les d'abord.`);
       return;
     }
-    Alert.alert('Supprimer la pièce', `Supprimer "${name}" ?`, [
+    Alert.alert('Supprimer la piece', `Supprimer "${name}" ?`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
@@ -101,26 +83,41 @@ export default function PlantsScreen({ navigation }: Props) {
   }
 
   const totalPlants = plants.length;
+  const activeRooms = sections.filter(section => section.title !== 'Sans piece').length;
+  const needsAttention = plants.filter(plant => {
+    const status = getWateringStatus(plant);
+    return status === 'overdue' || status === 'today';
+  }).length;
+
+  const stats = [
+    { label: 'Plantes suivies', value: totalPlants, tint: palette.sky, tone: '#edf7fb' },
+    { label: 'Pieces actives', value: activeRooms, tint: palette.amber, tone: '#fff3e2' },
+    { label: 'A surveiller', value: needsAttention, tint: palette.terracotta, tone: '#fff0eb' },
+  ];
 
   return (
     <View style={styles.container}>
       <AppHeader
-        title="🌿 Mes Plantes"
-        subtitle={totalPlants === 0 ? 'Aucune plante' : `${totalPlants} plante${totalPlants > 1 ? 's' : ''}`}
+        theme="garden"
+        eyebrow="Collection"
+        title="Mes plantes"
+        subtitle={totalPlants === 0 ? 'Le jardin est encore vide' : `${totalPlants} plantes en suivi`}
         rightElement={
           <TouchableOpacity style={styles.manageBtn} onPress={() => setManageVisible(true)}>
-            <Text style={styles.manageBtnText}>🏠 Pièces</Text>
+            <Text style={styles.manageBtnText}>Pieces</Text>
           </TouchableOpacity>
         }
       />
 
       {plants.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🌱</Text>
-          <Text style={styles.emptyTitle}>Votre jardin est vide</Text>
-          <Text style={styles.emptyText}>
-            Appuyez sur + pour ajouter votre première plante
-          </Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyKicker}>Premier pot</Text>
+            <Text style={styles.emptyTitle}>Le jardin attend sa premiere plante</Text>
+            <Text style={styles.emptyText}>
+              Cree une plante, choisis une piece et commence a suivre son rythme.
+            </Text>
+          </View>
         </View>
       ) : (
         <SectionList
@@ -138,7 +135,18 @@ export default function PlantsScreen({ navigation }: Props) {
               <Text style={styles.sectionCount}>{section.data.length}</Text>
             </View>
           )}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          ListHeaderComponent={
+            <View style={styles.summaryStrip}>
+              {stats.map(stat => (
+                <View key={stat.label} style={[styles.statCard, { backgroundColor: stat.tone }]}>
+                  <View style={[styles.statDot, { backgroundColor: stat.tint }]} />
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+          }
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
         />
@@ -147,7 +155,7 @@ export default function PlantsScreen({ navigation }: Props) {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('AddPlant', {})}
-        activeOpacity={0.85}
+        activeOpacity={0.9}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -156,17 +164,20 @@ export default function PlantsScreen({ navigation }: Props) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🏠 Gérer les pièces</Text>
-              <TouchableOpacity onPress={() => setManageVisible(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <View>
+                <Text style={styles.modalEyebrow}>Organisation</Text>
+                <Text style={styles.modalTitle}>Pieces et reperes</Text>
+              </View>
+              <TouchableOpacity onPress={() => setManageVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalClose}>X</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.addRoomRow}>
               <TextInput
                 style={styles.addRoomInput}
-                placeholder="Nom de la pièce..."
-                placeholderTextColor="#aaa"
+                placeholder="Nom de la piece"
+                placeholderTextColor="#9aa1a8"
                 value={newRoomName}
                 onChangeText={setNewRoomName}
                 onSubmitEditing={handleAddRoom}
@@ -181,16 +192,19 @@ export default function PlantsScreen({ navigation }: Props) {
               data={rooms}
               keyExtractor={item => item}
               ListEmptyComponent={
-                <Text style={styles.noRooms}>Aucune pièce créée. Ajoutez-en une ci-dessus.</Text>
+                <Text style={styles.noRooms}>Aucune piece creee pour le moment.</Text>
               }
               renderItem={({ item }) => {
                 const count = plants.filter(p => p.location === item).length;
                 return (
                   <View style={styles.roomRow}>
-                    <Text style={styles.roomName}>{item}</Text>
-                    <Text style={styles.roomCount}>{count} plante{count !== 1 ? 's' : ''}</Text>
-                    <TouchableOpacity onPress={() => handleDeleteRoom(item)}>
-                      <Text style={styles.roomDelete}>🗑️</Text>
+                    <View style={styles.roomBadge} />
+                    <View style={styles.roomInfo}>
+                      <Text style={styles.roomName}>{item}</Text>
+                      <Text style={styles.roomCount}>{count} plante{count !== 1 ? 's' : ''}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleDeleteRoom(item)} style={styles.roomDeleteButton}>
+                      <Text style={styles.roomDelete}>Suppr.</Text>
                     </TouchableOpacity>
                   </View>
                 );
@@ -204,102 +218,198 @@ export default function PlantsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f0' },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  emptyEmoji: { fontSize: 72, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1a472a', marginBottom: 8 },
-  emptyText: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 22 },
+  container: { flex: 1, backgroundColor: palette.background },
+  summaryStrip: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: screenPadding,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  statCard: {
+    flex: 1,
+    minHeight: 94,
+    borderRadius: 22,
+    padding: 14,
+    ...cardShadow,
+  },
+  statDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: palette.ink,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: palette.inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  emptyState: {
+    flex: 1,
+    padding: screenPadding,
+    justifyContent: 'center',
+  },
+  emptyCard: {
+    backgroundColor: palette.surfaceStrong,
+    borderRadius: 28,
+    padding: 28,
+    ...cardShadow,
+  },
+  emptyKicker: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: palette.terracotta,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '800',
+    color: palette.ink,
+    marginBottom: 10,
+  },
+  emptyText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: palette.inkSoft,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 6,
+    paddingHorizontal: screenPadding,
+    paddingTop: 18,
+    paddingBottom: 8,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#2d6a4f', flex: 1 },
+  sectionTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '800',
+    color: palette.ink,
+  },
   sectionCount: {
     fontSize: 12,
-    color: '#fff',
-    backgroundColor: '#2d6a4f',
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    color: palette.white,
+    backgroundColor: palette.garden,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     overflow: 'hidden',
+    fontWeight: '700',
   },
   fab: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2d6a4f',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: palette.terracotta,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: palette.coral,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
+    elevation: 10,
   },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', marginTop: -2 },
+  fabText: { color: palette.white, fontSize: 30, fontWeight: '300', marginTop: -2 },
   manageBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  manageBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  manageBtnText: { color: palette.white, fontSize: 13, fontWeight: '700' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(24, 18, 14, 0.45)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: palette.surfaceStrong,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 20,
-    maxHeight: '70%',
+    maxHeight: '72%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    marginBottom: 18,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1a472a' },
-  modalClose: { fontSize: 18, color: '#888', padding: 4 },
-  addRoomRow: { flexDirection: 'row', marginBottom: 16, gap: 8 },
-  addRoomInput: {
-    flex: 1,
-    backgroundColor: '#f5f5f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+  modalEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: palette.terracotta,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  addRoomBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#2d6a4f',
+  modalTitle: { fontSize: 24, fontWeight: '800', color: palette.ink },
+  modalCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#f3eadc',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addRoomBtnText: { color: '#fff', fontSize: 24, fontWeight: '300', marginTop: -2 },
-  noRooms: { color: '#aaa', textAlign: 'center', padding: 20 },
+  modalClose: { fontSize: 14, color: palette.ink, fontWeight: '800' },
+  addRoomRow: { flexDirection: 'row', marginBottom: 16, gap: 8 },
+  addRoomInput: {
+    flex: 1,
+    backgroundColor: palette.background,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: palette.ink,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  addRoomBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: palette.garden,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addRoomBtnText: { color: palette.white, fontSize: 24, fontWeight: '300', marginTop: -2 },
+  noRooms: { color: palette.inkSoft, textAlign: 'center', padding: 20 },
   roomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#f2e8da',
   },
-  roomName: { flex: 1, fontSize: 15, color: '#333', fontWeight: '500' },
-  roomCount: { fontSize: 12, color: '#888', marginRight: 12 },
-  roomDelete: { fontSize: 18, padding: 4 },
+  roomBadge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: palette.sky,
+    marginRight: 12,
+  },
+  roomInfo: { flex: 1 },
+  roomName: { fontSize: 16, color: palette.ink, fontWeight: '700' },
+  roomCount: { fontSize: 12, color: palette.inkSoft, marginTop: 2 },
+  roomDeleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#fff1ee',
+  },
+  roomDelete: { fontSize: 12, color: palette.coral, fontWeight: '800' },
 });
